@@ -6,10 +6,11 @@ use std::env;
 use clap::Parser;
 use std::process::{exit, Command, ExitStatus, Stdio};
 use csv::ReaderBuilder;
+
 #[derive(Parser)]
-#[command(version="1.0", about="Diagnostic tool for Streptococcus suis whole-genome sequences", long_about=None,arg_required_else_help=true)]
+#[command(version="0.1.0", about="MLST tool for whole-genome sequences (only tested on Streptococcus suis)", long_about="Uses kma for read-alignment against redundant sequence database, parsing and ST assignments done by searching custom-built multi-rooted tree using hashmaps. Clonal complexes not supported (yet)",arg_required_else_help=true)]
 struct Args{
-    /// PE files
+    /// Input files [.fastq, .fasta]
     #[arg(short='i', long, value_delimiter = ' ', num_args = 1..)]
     input: Option<Vec<String>>,
 
@@ -31,8 +32,10 @@ struct Args{
 }
 
 
-// TODO: Allow user specified path for MLST database, defs... etc
-// Currently only searches for program dir
+// TODO: 
+// Allow user-specified path for MLST database, defs... etc. Currently only searches for program dir
+// Nanopore long-read sequences support
+// Test against other species
 fn main() {
     let args: Args = Args::parse();
     
@@ -169,15 +172,15 @@ impl Tree {
     }
     pub fn add_chain(&mut self, all: Vec<u16>, _h: Vec<String>, st: u16) {
         // let mut hcp = h.clone();
-        let mut allcp = all.clone();
+        let mut allcp: Vec<u16> = all.clone();
         
         // Create new chain if first allele doesn't exist
         if !self.roots.contains_key(&all[0]){
-            let mut allele = allcp.pop().unwrap();
+            let mut allele: u16 = allcp.pop().unwrap();
             // let mut last = Node::new(hcp.pop().unwrap().clone());
-            let mut last = Node::new();
+            let mut last: Node = Node::new();
             while allcp.len() > 0 {
-                let cur = allcp.pop().unwrap();
+                let cur: u16 = allcp.pop().unwrap();
                 // last = Node::new(hcp.pop().unwrap()).add_node(allele, last);
                 last = Node::new().add_node(allele, last);
                 allele = cur;
@@ -188,12 +191,12 @@ impl Tree {
         // Find missing alleles # and add
         else {
             let mut index: usize = 1;
-            let mut cur = self.roots.get(&all[0]).unwrap().clone();
+            // Fuck this clone shit there must be a better way to do this
+            let mut cur: Node = self.roots.get(&all[0]).unwrap().clone();
             while index < allcp.len() {
                 if cur.nexts.contains_key(&all[index]){
                     cur = cur.nexts.get(&all[index]).unwrap().clone();
                 } else {
-                    // let mut n = Node::new(h[index].clone());
                     let mut n = Node::new();
                     if index == allcp.len()-1{
                         n.st = st;
@@ -229,8 +232,6 @@ impl Node {
     }
 }
 
-
-
 // Fuck this shit just do Vec for all of them next time
 fn read_profiles(p: &PathBuf) -> Result<HashMap<u16,Vec<String>>, Box<dyn Error>> {
     let profile_file = File::open(p)?;
@@ -257,7 +258,6 @@ fn read_profiles(p: &PathBuf) -> Result<HashMap<u16,Vec<String>>, Box<dyn Error>
     }
     Ok(profiles)
 }
-
 
 // Highest scoring alleles
 fn parse_res(h: Vec<String>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Error> > {
