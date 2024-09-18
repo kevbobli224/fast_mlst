@@ -80,23 +80,22 @@ fn main() {
     }
 
 
-    let res = parse_res(header.clone()).unwrap();
     // println!("{:?}", res);
-
+    
     // exit(1);
-
+    
     // println!("{}", &format!("kma -o {} -t_db {:?} -{} {} -na -nf -nc", args.out, &program_database.join(mlst_db).to_str().unwrap(), if input_single {"i"} else {"ipe"}, if input_single {args.r#in.as_ref().unwrap().to_string()} else {format!("{} {}", args.forward.as_ref().unwrap(), args.reverse.as_ref().unwrap())}));
     //let header = format!("#Name\tST\t{}\n", header.iter().map(|f| format!("{}\t", f)).collect::<Vec<String>>().join("") );
-
+    
     let a = input.clone().iter().map(|f| format!("{f}")).collect::<Vec<String>>().join(" ");
-
+    
     let cmd: Result<ExitStatus, std::io::Error> = Command::new("bash").arg("-c").arg(&format!("kma -o tmp_kma -t_db {:?} -{} {} -na -nf -nc", &program_database.join(args.mlst_db.as_ref().unwrap()).to_str().unwrap(), if input_single {"i"} else {"ipe"}, if input_single {&input[0]} else { &a })).stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap().wait();
     if cmd.is_err() {custom_exit("kma failed to run", cmd.err().unwrap().raw_os_error().unwrap());}
-
-
+    
+    
     // Parse results
     
-
+    
     for (k, mut v) in profiles.clone() {
         let empty = v.iter().position(|x| *x == "");
         if empty.is_some(){
@@ -107,7 +106,8 @@ fn main() {
         
     }
     // println!("{mlst_tree:?}");
-
+    
+    let res = parse_res(header.clone()).unwrap();
     // Perform tree search for each 7 alleles
     // let res = parse_res().unwrap();
     let mut cur: Option<&Node> = None;
@@ -276,7 +276,7 @@ fn parse_res(h: Vec<String>) -> Result<Vec<Vec<String>>, Box<dyn std::error::Err
 
         let score = cur_res[1].trim().parse::<u32>().unwrap();
         
-        let allele_res = Vec::from_iter(gene_allele.split("-").map(String::from));
+        let allele_res = Vec::from_iter(gene_allele.split("_").map(String::from));
         
         if hm.contains_key(&allele_res[0]){
             if hm.get(&allele_res[0]).unwrap().1 < score {
